@@ -1,6 +1,6 @@
 # 言語交換チャットPWA 設計書
 
-最終更新：2026-10-27
+最終更新：2026-10-28
 
 ## コンセプト
 
@@ -122,11 +122,14 @@ AIが相手の言語交換チャット。会話を続けながら、自分の文
 
 | テーブル | 主な列 |
 | --- | --- |
-| partners | id, name, language, persona（JSON）, level, created_at |
-| messages | id, partner_id, role, content（JSON）, created_at |
-| partner_memory | partner_id, body, pending_hints, updated_at |
-| mistakes | id, partner_id, language, original, fixed, type, note_ja, reviewed, created_at |
+| partners | id, name, language, persona（JSON）, level, memory, pending_hints（JSON）, turns_since_memory, created_at, updated_at |
+| messages | id, partner_id, seq, role, text, text_ja, corrections（JSON）, status（ok / raw）, model, created_at |
+| mistakes | id, partner_id, partner_name, message_id, language, original, fixed, type, note_ja, context, reviewed, created_at |
 | settings | key, value |
+
+- 記憶は partners の列として持つ（別テーブルにしない）
+- 間違いログは相手を消しても残す（partner_id は NULL になり、名前の控え partner_name で表示する）
+- 会話の送信は「成功したときだけ発言と返事をまとめて保存」。失敗したら何も残さず、入力欄に文を戻す
 
 ## システムプロンプト構成
 
@@ -160,18 +163,25 @@ AIが相手の言語交換チャット。会話を続けながら、自分の文
 
 まず中国語1パートナーで会話と矯正が回る状態を作り、機能はその上に積む。
 
-| フェーズ | 中身 |
-| --- | --- |
-| 1（MVP） | 中国語モード、パートナー1人、会話＋訳＋矯正カード、ピンイン表示、間違いログの保存と一覧 |
-| 2 | 読み上げ、声調の色分け、繁体字表示、ピンインのモデル生成、記憶の要約、「何て言う？」、複数パートナー |
-| 3 | 英語モード、間違いログの復習（クイズ化）、単語タップ辞書、データのエクスポート |
+| フェーズ | 中身 | 状態 |
+| --- | --- | --- |
+| 1（MVP） | 中国語モード、会話＋訳＋矯正カード、ピンイン表示、間違いログの保存と一覧 | 実装済み |
+| 1に前倒し | 複数パートナー、英語モード、記憶の要約、読み上げ、声調の色分け、相手から話しかける | 実装済み |
+| 2 | 繁体字表示、ピンインのモデル生成、「何て言う？」 | 未着手 |
+| 3 | 間違いログの復習（クイズ化）、単語タップ辞書、データのエクスポート | 未着手 |
+
+## 技術構成
+
+- aI-chatv2 と同じ: Express 5 + better-sqlite3、`.env` はリポジトリルート、APP_PASSWORD / BIND の安全装置、Tailscale の背後で運用
+- 違い: クライアントは esbuild でビルド、サーバーは tsx で直接起動、ルーターと状態管理は自前の小さな実装
+- ポートは 3001（aI-chatv2 の 3000 と分ける）。`tailscale serve` は 8443 番で受ける
 
 ## 未決事項
 
 - [x] 別PWAにする（aI-chatv2とは分け、OpenRouterの通信部分だけ流用）
 - [x] データはVPS側のSQLiteで管理（既存PWAと同じ構成）
 - [x] 日本語訳はタップで表示
+- [x] ピンインのモデル生成をON / OFFで選べるようにする（実装はフェーズ2）
+- [x] 簡体字が基本。繁体字は表示切替として入れる（実装はフェーズ2）
 - [ ] 相手も日本語を学んでいる設定にするか（ときどき日本語の質問をしてくる）
-- [x] ピンインのモデル生成をON / OFFで選べるようにする
-- [x] 簡体字が基本。繁体字は表示切替として入れる
-- [ ] アプリ名
+- [ ] アプリ名（仮に「Language Partner」）
