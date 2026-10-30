@@ -65,22 +65,36 @@ sudo tailscale serve status
 git clone https://github.com/y6fz2zypk6-stack/AI-LanguageLearning.git
 cd AI-LanguageLearning
 npm install
-cp .env.example .env    # OPENROUTER_API_KEY / APP_PASSWORD を設定（PORT=3002 は既定のまま）
+cp .env.example .env
+nano .env               # 下の3つを設定する（BIND は行頭の # を消す）
 npm test                # モックで通しテスト（APIキー不要）
 npm run build
+```
 
-# 2. まずは手で起動して確かめる
+`.env` で最初に設定するもの:
+
+```
+OPENROUTER_API_KEY=sk-or-...
+APP_PASSWORD=<好きなパスワード>
+BIND=127.0.0.1
+```
+
+`APP_PASSWORD` と `BIND` が両方とも無いと、サーバーは「起動を中止しました」と出して止まる（安全装置）。
+VPSは公開ポートが22番だけなので、最初から `BIND=127.0.0.1` にしてよい（`tailscale serve` は 127.0.0.1 へ転送するので、これで届く）。
+
+```bash
+# 2. 起動して、VPSの中から確かめる
 npm start
+curl -sI http://127.0.0.1:3002 | head -1    # 別のSSHで。HTTP/1.1 200 OK ならOK
 
 # 3. tailnet 内の HTTPS で受ける（443番。既存の 8443・10000 には触らない）
 sudo tailscale serve --bg 3002
 # 別の端末から https://<マシン名>.<tailnet>.ts.net で開けることを確認する
 ```
 
-開けたら `.env` を更新して再起動する。
+開けたら `.env` に次を足して再起動する（ログインのCookieをHTTPS用にするため）。
 
 ```
-BIND=127.0.0.1
 APP_URL=https://<マシン名>.<tailnet>.ts.net
 TRUST_PROXY=1
 ```
