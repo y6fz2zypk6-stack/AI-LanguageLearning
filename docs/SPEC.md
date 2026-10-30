@@ -174,7 +174,8 @@ AIが相手の言語交換チャット。会話を続けながら、自分の文
 
 - aI-chatv2 と同じ: Express 5 + better-sqlite3、`.env` はリポジトリルート、APP_PASSWORD / BIND の安全装置、Tailscale の背後で運用
 - 違い: クライアントは esbuild でビルド、サーバーは tsx で直接起動、ルーターと状態管理は自前の小さな実装
-- ポートは 3001（aI-chatv2 の 3000 と分ける）。`tailscale serve` は 8443 番で受ける
+- ポートは 3002（同じVPSの aI-chatv2 が 3001、Novel が 3000）。`tailscale serve` は空いている 443 番で受ける（aI-chatv2 が 8443、Novel が 10000）
+- セッションCookieは `lp_sid`（aI-chatv2 の `sid` と分ける。Cookieはポートで分かれないため）
 
 ## 未決事項
 

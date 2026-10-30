@@ -7,6 +7,13 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30日
 const sessions = new Map<string, number>();
 
 /**
+ * セッションCookieの名前。**aI-chatv2 の `sid` と分ける。**
+ * Cookieはポートで分かれないので、同じホスト名（〇〇.ts.net）の別ポートで動く
+ * aI-chatv2 と同じ名前だと、片方にログインするたびにもう片方がログアウトされる
+ */
+export const SESSION_COOKIE = 'lp_sid';
+
+/**
  * Cookieに secure を付けるか。
  * COOKIE_SECURE で明示指定でき、未指定なら APP_URL が https のときだけ有効にする
  * （httpのローカル開発でログインできなくなるのを避けるため）。
@@ -76,7 +83,7 @@ function recordFailure(key: string): void {
 }
 
 function isValidSession(req: Request): boolean {
-  const sid = (req as Request & { cookies?: Record<string, string> }).cookies?.sid;
+  const sid = (req as Request & { cookies?: Record<string, string> }).cookies?.[SESSION_COOKIE];
   if (!sid) return false;
   const exp = sessions.get(sid);
   if (!exp) return false;
@@ -130,14 +137,14 @@ authRouter.post('/login', (req, res) => {
   attempts.delete(key);
   const sid = randomBytes(32).toString('hex');
   sessions.set(sid, Date.now() + SESSION_TTL_MS);
-  res.cookie('sid', sid, { ...cookieOptions(), maxAge: SESSION_TTL_MS });
+  res.cookie(SESSION_COOKIE, sid, { ...cookieOptions(), maxAge: SESSION_TTL_MS });
   res.json({ ok: true });
 });
 
 authRouter.post('/logout', (req, res) => {
-  const sid = (req as Request & { cookies?: Record<string, string> }).cookies?.sid;
+  const sid = (req as Request & { cookies?: Record<string, string> }).cookies?.[SESSION_COOKIE];
   if (sid) sessions.delete(sid);
-  res.clearCookie('sid', cookieOptions());
+  res.clearCookie(SESSION_COOKIE, cookieOptions());
   res.json({ ok: true });
 });
 

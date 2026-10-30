@@ -21,7 +21,7 @@ React 19 + esbuild / Express 5 + SQLite（better-sqlite3）/ OpenRouter。構成
 npm install
 cp .env.example .env   # OPENROUTER_API_KEY と APP_PASSWORD を設定
 npm run build
-npm start              # http://localhost:3001
+npm start              # http://localhost:3002
 ```
 
 `.env` は**リポジトリルート**に置く（`server/.env` は読まれない）。`DB_PATH` の相対パスもルート基準。
@@ -30,7 +30,7 @@ npm start              # http://localhost:3001
 
 ```bash
 npm run dev            # サーバー（tsx watch）とクライアント（esbuild --watch）を同時に起動
-# http://localhost:3001 を開く（サーバーが client/dist を配信する）
+# http://localhost:3002 を開く（サーバーが client/dist を配信する）
 ```
 
 ### テスト
@@ -43,33 +43,52 @@ OpenRouter互換のモックを立て、実際のAPIを叩いて確かめる（`
 返事・矯正・間違いログの保存、形式崩れの再試行、上流の失敗時に何も残さないこと、記憶の書き直し、
 ログイン、パスワード無しで外に出す構成を起動させないこと、など。
 
-## VPS（aI-chatv2 と同じサーバーに置く）
+## VPS（aI-chatv2・Novel と同じサーバーに置く）
 
-aI-chatv2 が 3000 番と `tailscale serve` の 443 番を使っている前提で、こちらは **3001 番**と **8443 番**にする。
+いまのサーバーの割り当てと、このアプリの置き場所:
+
+| アプリ | 待ち受け | tailscale serve |
+|---|---|---|
+| Novel | 3000 | 10000 |
+| aI-chatv2 | 3001 | 8443 |
+| **このアプリ** | **3002** | **443**（URLにポート番号が付かない） |
+
+アプリは `127.0.0.1` だけで待ち受け、`tailscale serve` が tailnet の中にだけ HTTPS で出す。
+**VPSの公開ポート（ufw）は何も開けなくてよい**（22番だけのままでOK）。
 
 ```bash
+# 0. 空きを確かめる（:3002 と :443 が一覧に無ければ空き）
+sudo ss -tlnp | grep -E ':300[0-9]'
+sudo tailscale serve status
+
+# 1. 取ってきて設定する
 git clone https://github.com/y6fz2zypk6-stack/AI-LanguageLearning.git
 cd AI-LanguageLearning
 npm install
-cp .env.example .env    # OPENROUTER_API_KEY / APP_PASSWORD / PORT=3001
+cp .env.example .env    # OPENROUTER_API_KEY / APP_PASSWORD を設定（PORT=3002 は既定のまま）
+npm test                # モックで通しテスト（APIキー不要）
 npm run build
-npm start               # まず普通に起動して動くことを確かめる
 
-# tailnet 内の HTTPS で受ける（aI-chatv2 とは別のポート）
-sudo tailscale serve --bg --https=8443 3001
-# 別の端末から https://<マシン名>.<tailnet>.ts.net:8443 で開けることを確認する
+# 2. まずは手で起動して確かめる
+npm start
+
+# 3. tailnet 内の HTTPS で受ける（443番。既存の 8443・10000 には触らない）
+sudo tailscale serve --bg 3002
+# 別の端末から https://<マシン名>.<tailnet>.ts.net で開けることを確認する
 ```
 
 開けたら `.env` を更新して再起動する。
 
 ```
 BIND=127.0.0.1
-APP_URL=https://<マシン名>.<tailnet>.ts.net:8443
+APP_URL=https://<マシン名>.<tailnet>.ts.net
 TRUST_PROXY=1
 ```
 
-常駐のさせ方（pm2・systemd など）は aI-chatv2 と同じでよい。iPhone では Safari で開いて
-「共有 → ホーム画面に追加」するとPWAとして使える。
+- 443 が使用中だったら、空いている別の番号で `sudo tailscale serve --bg --https=<番号> 3002` にして、`APP_URL` にもその番号を付ける
+- ポートが違えば別のオリジンになるので、Service Worker・キャッシュ・ホーム画面のアプリは他の2つと混ざらない
+- **Cookieだけはポートで分かれない**ので、セッションCookieの名前を aI-chatv2 の `sid` と分けて `lp_sid` にしてある（同じ名前だと、片方にログインするたびにもう片方がログアウトされる）
+- 常駐のさせ方（pm2・systemd など）は aI-chatv2 と同じでよい。iPhone では Safari で開いて「共有 → ホーム画面に追加」
 
 **パスワードも `BIND` も無いまま外に出す構成では、サーバーは起動しない**（aI-chatv2 と同じ安全装置）。
 
@@ -95,7 +114,7 @@ DBは `data/app.sqlite` の1ファイル。コピーするときはサーバー�
 | `SESSION_SECRET` | パスワード比較のHMAC鍵。未設定なら `APP_PASSWORD` を代用 |
 | `DEFAULT_MODEL` | 会話用の既定モデル（既定 `~anthropic/claude-sonnet-latest`）。画面の設定が優先 |
 | `UTILITY_MODEL` | 記憶の書き直し用。空なら会話用と同じ |
-| `PORT` / `BIND` | 既定 3001 / 全インターフェース。Tailscale の背後なら `BIND=127.0.0.1` |
+| `PORT` / `BIND` | 既定 3002 / 全インターフェース。Tailscale の背後なら `BIND=127.0.0.1` |
 | `APP_URL` / `COOKIE_SECURE` / `TRUST_PROXY` | HTTPS運用の設定（aI-chatv2 と同じ意味） |
 | `DB_PATH` / `APP_TITLE` | 任意 |
 | `LLM_TIMEOUT_MS` | 1回の生成の待ち時間の上限（既定 90000） |

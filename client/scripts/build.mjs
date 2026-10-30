@@ -106,7 +106,7 @@ if (watch) {
     ],
   });
   await ctx.watch();
-  console.log('[build] 変更を見張っています（サーバーの http://localhost:3001 で確認）');
+  console.log('[build] 変更を見張っています（サーバーの http://localhost:3002 で確認）');
 } else {
   const result = await esbuild.build(options);
   finish(result.metafile);

@@ -337,9 +337,12 @@ async function main(): Promise<void> {
     assert.equal((await call('POST', `${base}/login`, { password: 'nope' })).status, 401);
     const ok = await call('POST', `${base}/login`, { password: 'secret' });
     assert.equal(ok.status, 200);
-    const sid = /sid=([^;]+)/.exec(ok.headers.get('set-cookie') ?? '')?.[1];
+    // aI-chatv2 の `sid` と衝突しない名前で発行する
+    const sid = /(?:^|[;,]\s*)lp_sid=([^;]+)/.exec(ok.headers.get('set-cookie') ?? '')?.[1];
     assert.ok(sid);
-    assert.equal((await call('GET', `${base}/partners`, undefined, { Cookie: `sid=${sid}` })).status, 200);
+    assert.equal((await call('GET', `${base}/partners`, undefined, { Cookie: `lp_sid=${sid}` })).status, 200);
+    // aI-chatv2 のCookie（sid）が同じ値で届いても通さない
+    assert.equal((await call('GET', `${base}/partners`, undefined, { Cookie: `sid=${sid}` })).status, 401);
   });
 
   await test('パスワードも到達制限も無い構成では起動しない', async () => {

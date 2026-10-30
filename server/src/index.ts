@@ -85,7 +85,7 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
   res.status(status).json({ error: err.message });
 });
 
-const port = Number(process.env.PORT || 3001);
+const port = Number(process.env.PORT || 3002);
 const bind = (process.env.BIND || '').trim();
 const allInterfaces = bindsAllInterfaces(bind);
 const reachRestricted = isReachRestricted(bind);
