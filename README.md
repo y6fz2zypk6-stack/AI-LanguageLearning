@@ -102,7 +102,44 @@ TRUST_PROXY=1
 - 443 が使用中だったら、空いている別の番号で `sudo tailscale serve --bg --https=<番号> 3002` にして、`APP_URL` にもその番号を付ける
 - ポートが違えば別のオリジンになるので、Service Worker・キャッシュ・ホーム画面のアプリは他の2つと混ざらない
 - **Cookieだけはポートで分かれない**ので、セッションCookieの名前を aI-chatv2 の `sid` と分けて `lp_sid` にしてある（同じ名前だと、片方にログインするたびにもう片方がログアウトされる）
-- 常駐のさせ方（pm2・systemd など）は aI-chatv2 と同じでよい。iPhone では Safari で開いて「共有 → ホーム画面に追加」
+- iPhone では Safari で開いて「共有 → ホーム画面に追加」
+
+### 常駐させる（systemd）
+
+`npm start` はターミナルを閉じると止まるので、systemd に任せる。node / npm の場所はその場で調べて書き込む。
+先に、手で動かしている `npm start` を Ctrl+C で止めておく（同じ3002番を取り合わないように）。
+
+```bash
+cd ~/AI-LanguageLearning
+NPM=$(which npm); NODEDIR=$(dirname "$(which node)")
+sudo tee /etc/systemd/system/langpartner.service > /dev/null <<UNIT
+[Unit]
+Description=Language Partner (AI-LanguageLearning)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=$PWD
+ExecStart=$NPM start
+Environment=PATH=$NODEDIR:/usr/local/bin:/usr/bin:/bin
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo systemctl daemon-reload
+sudo systemctl enable --now langpartner
+systemctl status langpartner --no-pager | head -5    # active (running) ならOK
+```
+
+| やりたいこと | コマンド |
+|---|---|
+| ログを見る | `journalctl -u langpartner -f` |
+| 再起動（.env を変えたとき） | `sudo systemctl restart langpartner` |
+| 止める | `sudo systemctl stop langpartner` |
 
 **パスワードも `BIND` も無いまま外に出す構成では、サーバーは起動しない**（aI-chatv2 と同じ安全装置）。
 
@@ -112,7 +149,7 @@ TRUST_PROXY=1
 git pull
 npm install
 npm run build
-# サーバーを再起動
+sudo systemctl restart langpartner
 ```
 
 ### バックアップ
