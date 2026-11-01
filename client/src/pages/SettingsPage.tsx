@@ -181,7 +181,7 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
-            <div className="section-note">端末に入っている音声を使います。iPhoneは「設定 → アクセシビリティ → 読み上げコンテンツ → 声」で中国語の声を追加できます。</div>
+            <div className="section-note">端末に入っている音声を使います。iPhoneは「設定 → アクセシビリティ → 読み上げ（英語表示では Read &amp; Speak）→ 声」で中国語の声を追加できます。マナーモードだと鳴らないことがあります。</div>
           </div>
 
           <div className="section">
